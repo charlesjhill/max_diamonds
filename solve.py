@@ -4,6 +4,7 @@ from functools import total_ordering
 from typing import NamedTuple
 
 from models import State, Pack, Blueprint
+from blueprint_parser import parse
 
 
 @dataclass
@@ -61,7 +62,7 @@ class BestObserved:
         self.value = max(self.value, v)
     
     def reset(self):
-        self.value = 0
+        self.value = -1
 
     def __eq__(self, other):
         return self.value == other
@@ -95,7 +96,9 @@ def solve(
         if state.remaining_turns < remaining_turns:
             stats.hit_cache()
             return -1
-        elif state.remaining_turns == remaining_turns:
+        
+        # Normal caching
+        if state.remaining_turns == remaining_turns:
             stats.hit_cache()
             return best_result
     stats.missed_cache()
@@ -159,24 +162,54 @@ def solve(
 
 
 def reset():
-    global BEST_OBSERVED
+    best.reset()
     cache.clear()
     stats.reset()
-    BEST_OBSERVED = -1
 
 
 if __name__ == "__main__":
-    for num_steps in [50]:
-        bp = Blueprint()  # Use the default blueprint for the time being.
-        initial_state = State(pack=Pack(ore_bots=1), remaining_turns=num_steps)
+    blueprint_file = "./blueprints.txt"
+    blueprints = parse(blueprint_file)
+
+    # example_blueprints = [
+    #     Blueprint(
+    #         (4, 0, 0, 0),
+    #         (2, 0, 0, 0),
+    #         (3, 14, 0, 0),
+    #         (2, 0, 7, 0,),
+    #         id=1
+    #     ),
+    #     Blueprint(
+    #         (2, 0, 0, 0),
+    #         (3, 0, 0, 0),
+    #         (3, 8, 0, 0),
+    #         (3, 0, 12, 0,),
+    #         id=2
+    #     )
+    # ]
+
+    qualities = []
+
+    grand_start = time.process_time()
+    for bp in blueprints:
+        initial_state = State(pack=Pack(ore_bots=1), remaining_turns=24)
 
         start_time = time.process_time()
-        print("Max Steps: ", num_steps)
-        print("Solution: ", solve(initial_state, bp))
-        print(f"[*] Duration: {time.process_time() - start_time:g} seconds")
-        print(f"[*] Num States Visited: {stats.states_visited}")
-        print(f"[*] Cache Hit Rate: {stats.cache_hit_rate:.2%}")
-        print(f"[*] Num Futile Hits: {stats.futile_hits}")
-        print("------------------------------------------")
+        max_diamonds = solve(initial_state, bp)
+        duration = time.process_time() - start_time
 
+        qualities.append(bp.id * max_diamonds)
+
+        print("Blueprint #: ", bp.id)
+        print("Solution: ", max_diamonds)
+        print(f"[*] Duration: {duration:g} seconds")
+        # print(f"[*] Num States Visited: {stats.states_visited}")
+        # print(f"[*] Cache Hit Rate: {stats.cache_hit_rate:.2%}")
+        # print(f"[*] Num Futile Hits: {stats.futile_hits}")
+        print("[*] Quality: ", qualities[-1])
+        print("------------------------------------------")
         reset()
+    grand_duration = time.process_time() - grand_start
+
+    print("[+] Total Quality: ", sum(qualities))
+    print(f"[*] Total Time: {grand_duration:g}")
