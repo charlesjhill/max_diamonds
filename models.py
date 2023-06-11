@@ -90,16 +90,28 @@ class State(NamedTuple):
         return self._step()
 
     def build_ore(self, bp: "Blueprint"):
-        return self._replace(pack=self.pack.build_ore(bp))._step()
-
+        next_state = self._replace(pack=self.pack.build_ore(bp))._step()
+        return next_state._replace(
+            pack=next_state.pack._replace(ore=next_state.pack.ore-1)
+        )
+    
     def build_clay(self, bp: "Blueprint"):
-        return self._replace(pack=self.pack.build_clay(bp))._step()
+        next_state = self._replace(pack=self.pack.build_clay(bp))._step()
+        return next_state._replace(
+            pack=next_state.pack._replace(clay=next_state.pack.clay-1)
+        )
 
     def build_obsidian(self, bp: "Blueprint"):
-        return self._replace(pack=self.pack.build_obsidian(bp))._step()
+        next_state = self._replace(pack=self.pack.build_obsidian(bp))._step()
+        return next_state._replace(
+            pack=next_state.pack._replace(obsidian=next_state.pack.obsidian-1)
+        )
 
     def build_diamond(self, bp: "Blueprint"):
-        return self._replace(pack=self.pack.build_diamond(bp))._step()
+        next_state = self._replace(pack=self.pack.build_diamond(bp))._step()
+        return next_state._replace(
+            pack=next_state.pack._replace(diamonds=next_state.pack.diamonds-1)
+        )
 
     def can_build_ore(self, bp: "Blueprint"):
         return self.pack.can_build("ore", bp)
@@ -116,8 +128,10 @@ class State(NamedTuple):
     @property
     def upper_bound_diamonds(self):
         """Estimate the upper-bound on the diamonds achievable from this state"""
-        return self.pack.diamonds + self.remaining_turns * (
-            self.pack.diamond_bots + 0.5 * (self.remaining_turns + 1)
+        return (
+            self.pack.diamonds +
+            self.remaining_turns * self.pack.diamond_bots +
+            (self.remaining_turns * (self.remaining_turns - 1)) / 2
         )
 
 
